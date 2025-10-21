@@ -54,7 +54,40 @@ cd platform-leveling
 pip install -r requirements.txt
 ```
 
-### 2. iPhone IMU Setup (For Testing)
+### 2. Run the packaged application (recommended)
+
+Install the project as a Python package to get a single entrypoint that launches
+all of the simulation tools:
+
+```bash
+# From the project root
+pip install .
+
+# Start the guided menu
+leveling-app
+
+# The same menu can be launched without installing globally
+python -m leveling_app
+```
+
+Inside the menu you can:
+
+- launch the 3D visualizer,
+- start the interactive leveling-system CLI, or
+- switch between platform configurations (tripod, Stewart 3-DOF, Stewart 6-DOF)
+  without touching any source files.
+
+For automation you can also run individual tools directly:
+
+```bash
+# Launch the visualizer immediately for a 6-DOF Stewart platform
+leveling-app visualizer --platform stewart_6dof
+
+# Start the interactive leveling shell for the tripod configuration
+leveling-app system --platform tripod
+```
+
+### 3. iPhone IMU Setup (For Testing)
 
 **Option A: Using Sensor Logger App**
 1. Download "Sensor Logger" from App Store
@@ -79,7 +112,7 @@ ifconfig | grep "inet "
 ipconfig
 ```
 
-### 3. Run Simulation
+### 4. Run Simulation
 
 **3-Actuator Tripod:**
 ```bash
@@ -96,14 +129,14 @@ python platform_visualizer.py stewart_3dof
 python platform_visualizer.py stewart_6dof
 ```
 
-### 4. Controls
+### 5. Controls
 
 In the visualization:
 - **[Space]** - Toggle leveling ON/OFF
 - **[C]** - Calibrate IMU (set current angle as zero)
 - **[Q]** - Quit
 
-### 5. Integrated System (CLI)
+### 6. Integrated System (CLI)
 
 Run the complete leveling system with command interface:
 

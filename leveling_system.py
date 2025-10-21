@@ -287,24 +287,19 @@ class PlatformLevelingSystem:
 
 
 # Command-line interface
-def main():
-    import sys
-    
+def run_cli(platform_type: str = 'tripod') -> None:
+    """Launch the interactive leveling system command-line interface."""
+
     print("="*60)
     print("PLATFORM LEVELING SYSTEM")
     print("="*60)
-    
-    # Parse arguments
-    platform_type = 'tripod'
-    if len(sys.argv) > 1:
-        platform_type = sys.argv[1].lower()
-    
+
     # Create system
     system = PlatformLevelingSystem(
         platform_type=platform_type,
         use_iphone_imu=True  # Use iPhone for testing
     )
-    
+
     print("\nCommands:")
     print("  'c' - Calibrate IMU")
     print("  'a' - Calibrate actuators")
@@ -314,60 +309,71 @@ def main():
     print("  's' - Show status")
     print("  'q' - Quit")
     print()
-    
+
     try:
         while True:
             cmd = input("> ").strip().lower()
-            
+
             if cmd == 'c':
                 system.calibrate_imu()
-            
+
             elif cmd == 'a':
                 system.calibrate_actuators()
-            
+
             elif cmd == 'e':
                 system.leveling_enabled = not system.leveling_enabled
                 system.enable_leveling(system.leveling_enabled)
-            
+
             elif cmd == 'l':
                 if not system.leveling_enabled:
                     print("Enable leveling first (press 'e')")
                 else:
                     system.level_once()
-            
+
             elif cmd == 'auto':
                 system.auto_level_enabled = not system.auto_level_enabled
                 system.enable_auto_level(system.auto_level_enabled)
-            
+
             elif cmd == 's':
                 status = system.get_status()
                 print("\nSystem Status:")
                 print(f"  Leveling: {'ENABLED' if status['leveling_enabled'] else 'DISABLED'}")
                 print(f"  Auto-level: {'ENABLED' if status['auto_level_enabled'] else 'DISABLED'}")
-                
+
                 if status['imu']['roll'] is not None:
                     print(f"\n  IMU:")
                     print(f"    Roll:  {status['imu']['roll']:7.2f}°")
                     print(f"    Pitch: {status['imu']['pitch']:7.2f}°")
                     print(f"    Yaw:   {status['imu']['yaw']:7.2f}°")
                     print(f"    Tilt:  {status['imu']['tilt_magnitude']:7.2f}°")
-                
+
                 print(f"\n  Controller:")
                 print(f"    Positions: {[f'{p:.1f}' for p in status['controller']['positions']]} mm")
                 print(f"    Targets:   {[f'{t:.1f}' for t in status['controller']['targets']]} mm")
                 print()
-            
+
             elif cmd == 'q':
                 break
-            
+
             else:
                 print("Unknown command")
-    
+
     except KeyboardInterrupt:
         print()
-    
+
     finally:
         system.shutdown()
+
+
+def main():
+    import sys
+
+    # Parse arguments
+    platform_type = 'tripod'
+    if len(sys.argv) > 1:
+        platform_type = sys.argv[1].lower()
+
+    run_cli(platform_type=platform_type)
 
 
 if __name__ == "__main__":

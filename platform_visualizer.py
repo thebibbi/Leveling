@@ -215,41 +215,47 @@ class PlatformVisualizer:
         self.ax_3d.view_init(elev=25, azim=45)
     
     def _draw_info_panel(self):
-        """Draw information panel with current state"""
+        """Draw information panel with current state."""
+
         self.ax_info.clear()
         self.ax_info.axis('off')
-        
+
         # Get IMU data
         imu_data = self.imu_streamer.get_latest()
-        
+
         # Build info text
-        info_lines = []
-        info_lines.append(f"PLATFORM: {self.platform_type.upper()}")
-        info_lines.append(f"Dimensions: {self.config.length*1000:.0f} × {self.config.width*1000:.0f} mm")
-        info_lines.append("")
-        
+        info_lines = [
+            f"PLATFORM: {self.platform_type.upper()}",
+            f"Dimensions: {self.config.length*1000:.0f} × {self.config.width*1000:.0f} mm",
+            "",
+        ]
+
         # IMU status
         if imu_data:
-            info_lines.append("IMU DATA:")
-            info_lines.append(f"  Roll:  {imu_data.roll:7.2f}°")
-            info_lines.append(f"  Pitch: {imu_data.pitch:7.2f}°")
-            info_lines.append(f"  Yaw:   {imu_data.yaw:7.2f}°")
-            
+            info_lines.extend(
+                [
+                    "IMU DATA:",
+                    f"  Roll:  {imu_data.roll:7.2f}°",
+                    f"  Pitch: {imu_data.pitch:7.2f}°",
+                    f"  Yaw:   {imu_data.yaw:7.2f}°",
+                ]
+            )
+
             # Tilt magnitude
             tilt_mag = np.sqrt(imu_data.roll**2 + imu_data.pitch**2)
             info_lines.append(f"  Tilt:  {tilt_mag:7.2f}°")
         else:
             info_lines.append("IMU DATA: Waiting...")
-        
+
         info_lines.append("")
-        
+
         # Leveling status
         status_color = 'green' if self.leveling_enabled else 'red'
         status_text = 'ENABLED' if self.leveling_enabled else 'DISABLED'
         info_lines.append(f"LEVELING: {status_text}")
-        
+
         info_lines.append("")
-        
+
         # Actuator lengths
         if self.actuator_lengths is not None:
             info_lines.append("ACTUATOR LENGTHS:")
@@ -257,36 +263,58 @@ class PlatformVisualizer:
                 length_mm = length * 1000
                 min_mm = self.config.min_height * 1000
                 max_mm = (self.config.min_height + self.config.actuator_stroke) * 1000
-                
+
                 # Check if within limits
-                if min_mm <= length_mm <= max_mm:
-                    status = "✓"
-                else:
-                    status = "✗"
-                
+                status = "✓" if min_mm <= length_mm <= max_mm else "✗"
                 info_lines.append(f"  [{i+1}] {length_mm:6.1f} mm {status}")
-        
-        info_lines.append("")
-        info_lines.append("CONTROLS:")
-        info_lines.append("  [Space] Toggle leveling")
-        info_lines.append("  [C] Calibrate")
-        info_lines.append("  [Q] Quit")
-        
+
+        info_lines.extend(
+            [
+                "",
+                "CONTROLS:",
+                "  [Space] Toggle leveling",
+                "  [C] Calibrate",
+                "  [Q] Quit",
+            ]
+        )
+
         # Draw text
         y_pos = 0.95
         for line in info_lines:
             if "ENABLED" in line:
-                self.ax_info.text(0.05, y_pos, line, fontsize=11, 
-                                 color=status_color, weight='bold',
-                                 transform=self.ax_info.transAxes)
-            elif line.startswith("PLATFORM:") or line.startswith("IMU DATA:") or \
-                 line.startswith("LEVELING:") or line.startswith("ACTUATOR") or \
-                 line.startswith("CONTROLS:"):
-                self.ax_info.text(0.05, y_pos, line, fontsize=11, 
-                                 weight='bold', transform=self.ax_info.transAxes)
+                self.ax_info.text(
+                    0.05,
+                    y_pos,
+                    line,
+                    fontsize=11,
+                    color=status_color,
+                    weight='bold',
+                    transform=self.ax_info.transAxes,
+                )
+            elif (
+                line.startswith("PLATFORM:")
+                or line.startswith("IMU DATA:")
+                or line.startswith("LEVELING:")
+                or line.startswith("ACTUATOR")
+                or line.startswith("CONTROLS:")
+            ):
+                self.ax_info.text(
+                    0.05,
+                    y_pos,
+                    line,
+                    fontsize=11,
+                    weight='bold',
+                    transform=self.ax_info.transAxes,
+                )
             else:
-                self.ax_info.text(0.05, y_pos, line, fontsize=10,
-                                 transform=self.ax_info.transAxes, family='monospace')
+                self.ax_info.text(
+                    0.05,
+                    y_pos,
+                    line,
+                    fontsize=10,
+                    transform=self.ax_info.transAxes,
+                    family='monospace',
+                )
             y_pos -= 0.05
     
     def _animation_update(self, frame):
@@ -360,9 +388,21 @@ class PlatformVisualizer:
         self.imu_streamer.stop()
 
 
+def run_visualizer(platform_type: str = "tripod") -> None:
+    """Launch the 3D platform visualizer for the selected platform type.
+
+    Args:
+        platform_type: Platform configuration to visualize. Supported values
+            are ``"tripod"``, ``"stewart_3dof"``, and ``"stewart_6dof"``.
+    """
+
+    viz = PlatformVisualizer(platform_type=platform_type)
+    viz.run()
+
+
 if __name__ == "__main__":
     import sys
-    
+
     # Parse command line arguments
     platform_type = 'tripod'
     if len(sys.argv) > 1:
@@ -371,7 +411,6 @@ if __name__ == "__main__":
             print(f"Unknown platform type: {platform_type}")
             print("Valid options: tripod, stewart_3dof, stewart_6dof")
             sys.exit(1)
-    
+
     # Create and run visualizer
-    viz = PlatformVisualizer(platform_type=platform_type)
-    viz.run()
+    run_visualizer(platform_type=platform_type)
