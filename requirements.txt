@@ -1,0 +1,15 @@
+numpy>=1.24.0
+matplotlib>=3.7.0
+pyserial>=3.5
+
+# Optional - for enhanced IMU support
+# smbus2>=0.4.2  # For I2C communication with BNO055
+# adafruit-circuitpython-bno055>=5.4.0  # BNO055 driver
+
+# Optional - for GUI interface
+# tkinter (usually included with Python)
+# PyQt5>=5.15.0  # Alternative GUI framework
+
+# Development/Testing
+# pytest>=7.4.0
+# black>=23.7.0  # Code formatting
