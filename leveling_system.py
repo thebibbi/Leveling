@@ -9,10 +9,80 @@ import threading
 from typing import Optional
 from dataclasses import dataclass
 
-from imu_streamer import IMUStreamer
+from imu_streamer import IMUStreamer, IMUData
 from inverse_kinematics import TripodIK, StewartPlatformIK, PlatformConfig
 from esp32_controller import ESP32Controller, SerialProtocol
 import struct
+
+
+try:
+    import board  # type: ignore
+    import busio  # type: ignore
+    from adafruit_bno055 import BNO055_I2C  # type: ignore
+
+    _BNO055_AVAILABLE = True
+except ImportError:
+    _BNO055_AVAILABLE = False
+
+
+class BNO055IMU:
+    def __init__(self, update_rate: float = 20.0):
+        if not _BNO055_AVAILABLE:
+            raise RuntimeError("BNO055 support libraries are not installed")
+
+        self.update_rate = update_rate
+        self.roll_offset = 0.0
+        self.pitch_offset = 0.0
+        self.yaw_offset = 0.0
+        self._latest: Optional[IMUData] = None
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+
+        self._i2c = busio.I2C(board.SCL, board.SDA)
+        self._sensor = BNO055_I2C(self._i2c)
+
+    def start(self):
+        if self._running:
+            return
+
+        self._running = True
+        self._thread = threading.Thread(target=self._update_loop, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._running = False
+        if self._thread:
+            self._thread.join()
+
+    def calibrate(self):
+        if self._latest:
+            self.roll_offset += self._latest.roll
+            self.pitch_offset += self._latest.pitch
+            self.yaw_offset += self._latest.yaw
+
+    def get_latest(self) -> Optional[IMUData]:
+        return self._latest
+
+    def _update_loop(self):
+        dt = 1.0 / self.update_rate
+
+        while self._running:
+            start_time = time.time()
+
+            euler = self._sensor.euler
+            if euler is not None:
+                heading, roll, pitch = euler
+
+                if roll is not None and pitch is not None and heading is not None:
+                    self._latest = IMUData(
+                        roll=roll - self.roll_offset,
+                        pitch=pitch - self.pitch_offset,
+                        yaw=heading - self.yaw_offset,
+                        timestamp=time.time()
+                    )
+
+            elapsed = time.time() - start_time
+            time.sleep(max(0.0, dt - elapsed))
 
 
 @dataclass
@@ -86,11 +156,8 @@ class PlatformLevelingSystem:
             self.imu.start()
         else:
             print("\nUsing BNO055 IMU (production)...")
-            # TODO: Initialize BNO055 via I2C
-            # For now, use iPhone as fallback
-            self.imu = IMUStreamer()
-            self.imu.start()
-        
+            self.imu = self._initialize_bno055()
+
         # 3. ESP32 Controller
         print("\nInitializing ESP32 Controller...")
         self.controller = ESP32Controller(
@@ -284,6 +351,20 @@ class PlatformLevelingSystem:
         self.imu.stop()
         
         print("System shutdown complete")
+
+    def _initialize_bno055(self):
+        if _BNO055_AVAILABLE:
+            try:
+                imu = BNO055IMU()
+                imu.start()
+                return imu
+            except Exception as exc:
+                print(f"Unable to initialize BNO055 IMU: {exc}")
+
+        print("Falling back to iPhone IMU streaming...")
+        fallback = IMUStreamer()
+        fallback.start()
+        return fallback
 
 
 # Command-line interface

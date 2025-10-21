@@ -30,6 +30,7 @@ Complete leveling system for roof-mounted and truck-bed mounted platforms (pop-u
 ### Software
 - Python 3.8+
 - Libraries: numpy, matplotlib, pyserial
+- Optional (hardware IMU): adafruit-circuitpython-bno055, adafruit-blinka
 - iOS device with IMU streaming app (for testing)
 
 ### Hardware (Production)
@@ -160,6 +161,8 @@ Commands:
 - `s` - Show status
 - `q` - Quit
 
+See `docs/CALIBRATION.md` for detailed calibration procedures.
+
 ## 📁 Project Structure
 
 ```
@@ -170,11 +173,11 @@ platform-leveling/
 ├── platform_visualizer.py   # 3D visualization
 ├── leveling_system.py       # Integrated system
 ├── requirements.txt         # Python dependencies
-├── README.md               # This file
+├── README.md                # This file
 └── docs/
-    ├── HARDWARE_SPEC.md    # Hardware specifications
-    ├── ESP32_FIRMWARE.md   # ESP32 firmware guide
-    └── CALIBRATION.md      # Calibration procedures
+    ├── ESP32_FIRMWARE.md    # ESP32 firmware guide
+    ├── HARDWARE_SPEC.md     # Hardware specifications
+    └── CALIBRATION.md       # Calibration procedures
 ```
 
 ## 🔧 Configuration
@@ -304,10 +307,11 @@ For issues or questions:
 1. Check the troubleshooting section
 2. Review hardware specifications
 3. Test individual components
+4. Consult the calibration guide in `docs/CALIBRATION.md`
 
 ## 📄 License
 
-[Your License Here]
+Licensed under the MIT License. See `LICENSE` for details.
 
 ## 🙏 Acknowledgments
 

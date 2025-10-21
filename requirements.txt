@@ -2,9 +2,9 @@ numpy>=1.24.0
 matplotlib>=3.7.0
 pyserial>=3.5
 
-# Optional - for enhanced IMU support
-# smbus2>=0.4.2  # For I2C communication with BNO055
-# adafruit-circuitpython-bno055>=5.4.0  # BNO055 driver
+# Optional - for hardware IMU support (BNO055)
+# adafruit-blinka>=8.0.0
+# adafruit-circuitpython-bno055>=5.4.0
 
 # Optional - for GUI interface
 # tkinter (usually included with Python)
