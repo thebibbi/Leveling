@@ -66,12 +66,16 @@ pip install .
 # Start the guided menu
 leveling-app
 
+# Launch the desktop GUI directly (optional)
+leveling-app gui
+
 # The same menu can be launched without installing globally
 python -m leveling_app
 ```
 
 Inside the menu you can:
 
+- launch the Tkinter-based GUI,
 - launch the 3D visualizer,
 - start the interactive leveling-system CLI, or
 - switch between platform configurations (tripod, Stewart 3-DOF, Stewart 6-DOF)
@@ -80,6 +84,9 @@ Inside the menu you can:
 For automation you can also run individual tools directly:
 
 ```bash
+# Open the GUI preconfigured for the tripod platform
+leveling-app gui --platform tripod
+
 # Launch the visualizer immediately for a 6-DOF Stewart platform
 leveling-app visualizer --platform stewart_6dof
 

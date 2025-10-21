@@ -4,6 +4,7 @@ import argparse
 from typing import Callable, Iterable, List, Optional
 
 from leveling_system import run_cli as run_leveling_cli
+from platform_leveling_gui import run_gui
 from platform_visualizer import run_visualizer
 
 AVAILABLE_PLATFORMS: List[str] = ["tripod", "stewart_3dof", "stewart_6dof"]
@@ -31,20 +32,23 @@ def _interactive_menu(default_platform: str = "tripod") -> None:
         print("=" * 60)
         print(f"Current platform: {platform}")
         print("\nSelect an option:")
-        print("  1) Launch 3D visualizer")
-        print("  2) Launch leveling system CLI")
-        print("  3) Change platform type")
-        print("  4) Quit")
+        print("  1) Launch graphical interface (GUI)")
+        print("  2) Launch 3D visualizer")
+        print("  3) Launch leveling system CLI")
+        print("  4) Change platform type")
+        print("  5) Quit")
 
-        choice = input("Enter choice [1-4]: ").strip()
+        choice = input("Enter choice [1-5]: ").strip()
 
         if choice == "1":
-            _launch(lambda: run_visualizer(platform), "launching the visualizer")
+            _launch(lambda: run_gui(platform), "launching the graphical interface")
         elif choice == "2":
-            _launch(lambda: run_leveling_cli(platform), "starting the leveling system")
+            _launch(lambda: run_visualizer(platform), "launching the visualizer")
         elif choice == "3":
-            platform = _prompt_for_platform(platform)
+            _launch(lambda: run_leveling_cli(platform), "starting the leveling system")
         elif choice == "4":
+            platform = _prompt_for_platform(platform)
+        elif choice == "5":
             print("\nGoodbye!")
             return
         else:
@@ -93,6 +97,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     visualizer_parser.set_defaults(
         func=lambda args: run_visualizer(args.platform)
+    )
+
+    gui_parser = subparsers.add_parser(
+        "gui",
+        help="Launch the Tkinter-based graphical interface.",
+    )
+    gui_parser.add_argument(
+        "--platform",
+        choices=AVAILABLE_PLATFORMS,
+        default="tripod",
+        help="Preselect a platform when the GUI opens (default: %(default)s).",
+    )
+    gui_parser.set_defaults(
+        func=lambda args: run_gui(args.platform)
     )
 
     system_parser = subparsers.add_parser(
