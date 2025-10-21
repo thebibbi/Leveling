@@ -30,6 +30,7 @@ Complete leveling system for roof-mounted and truck-bed mounted platforms (pop-u
 ### Software
 - Python 3.8+
 - Libraries: numpy, matplotlib, pyserial
+- Optional (hardware IMU): adafruit-circuitpython-bno055, adafruit-blinka
 - iOS device with IMU streaming app (for testing)
 
 ### Hardware (Production)
@@ -54,7 +55,47 @@ cd platform-leveling
 pip install -r requirements.txt
 ```
 
-### 2. iPhone IMU Setup (For Testing)
+### 2. Run the packaged application (recommended)
+
+Install the project as a Python package to get a single entrypoint that launches
+all of the simulation tools:
+
+```bash
+# From the project root
+pip install .
+
+# Start the guided menu
+leveling-app
+
+# Launch the desktop GUI directly (optional)
+leveling-app gui
+
+# The same menu can be launched without installing globally
+python -m leveling_app
+```
+
+Inside the menu you can:
+
+- launch the Tkinter-based GUI,
+- launch the 3D visualizer,
+- start the interactive leveling-system CLI, or
+- switch between platform configurations (tripod, Stewart 3-DOF, Stewart 6-DOF)
+  without touching any source files.
+
+For automation you can also run individual tools directly:
+
+```bash
+# Open the GUI preconfigured for the tripod platform
+leveling-app gui --platform tripod
+
+# Launch the visualizer immediately for a 6-DOF Stewart platform
+leveling-app visualizer --platform stewart_6dof
+
+# Start the interactive leveling shell for the tripod configuration
+leveling-app system --platform tripod
+```
+
+### 3. iPhone IMU Setup (For Testing)
 
 **Option A: Using Sensor Logger App**
 1. Download "Sensor Logger" from App Store
@@ -79,7 +120,7 @@ ifconfig | grep "inet "
 ipconfig
 ```
 
-### 3. Run Simulation
+### 4. Run Simulation
 
 **3-Actuator Tripod:**
 ```bash
@@ -96,14 +137,14 @@ python platform_visualizer.py stewart_3dof
 python platform_visualizer.py stewart_6dof
 ```
 
-### 4. Controls
+### 5. Controls
 
 In the visualization:
 - **[Space]** - Toggle leveling ON/OFF
 - **[C]** - Calibrate IMU (set current angle as zero)
 - **[Q]** - Quit
 
-### 5. Integrated System (CLI)
+### 6. Integrated System (CLI)
 
 Run the complete leveling system with command interface:
 
@@ -120,6 +161,8 @@ Commands:
 - `s` - Show status
 - `q` - Quit
 
+See `docs/CALIBRATION.md` for detailed calibration procedures.
+
 ## 📁 Project Structure
 
 ```
@@ -130,11 +173,11 @@ platform-leveling/
 ├── platform_visualizer.py   # 3D visualization
 ├── leveling_system.py       # Integrated system
 ├── requirements.txt         # Python dependencies
-├── README.md               # This file
+├── README.md                # This file
 └── docs/
-    ├── HARDWARE_SPEC.md    # Hardware specifications
-    ├── ESP32_FIRMWARE.md   # ESP32 firmware guide
-    └── CALIBRATION.md      # Calibration procedures
+    ├── ESP32_FIRMWARE.md    # ESP32 firmware guide
+    ├── HARDWARE_SPEC.md     # Hardware specifications
+    └── CALIBRATION.md       # Calibration procedures
 ```
 
 ## 🔧 Configuration
@@ -264,10 +307,11 @@ For issues or questions:
 1. Check the troubleshooting section
 2. Review hardware specifications
 3. Test individual components
+4. Consult the calibration guide in `docs/CALIBRATION.md`
 
 ## 📄 License
 
-[Your License Here]
+Licensed under the MIT License. See `LICENSE` for details.
 
 ## 🙏 Acknowledgments
 

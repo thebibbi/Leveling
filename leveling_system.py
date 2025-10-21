@@ -9,10 +9,80 @@ import threading
 from typing import Optional
 from dataclasses import dataclass
 
-from imu_streamer import IMUStreamer
+from imu_streamer import IMUStreamer, IMUData
 from inverse_kinematics import TripodIK, StewartPlatformIK, PlatformConfig
 from esp32_controller import ESP32Controller, SerialProtocol
 import struct
+
+
+try:
+    import board  # type: ignore
+    import busio  # type: ignore
+    from adafruit_bno055 import BNO055_I2C  # type: ignore
+
+    _BNO055_AVAILABLE = True
+except ImportError:
+    _BNO055_AVAILABLE = False
+
+
+class BNO055IMU:
+    def __init__(self, update_rate: float = 20.0):
+        if not _BNO055_AVAILABLE:
+            raise RuntimeError("BNO055 support libraries are not installed")
+
+        self.update_rate = update_rate
+        self.roll_offset = 0.0
+        self.pitch_offset = 0.0
+        self.yaw_offset = 0.0
+        self._latest: Optional[IMUData] = None
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+
+        self._i2c = busio.I2C(board.SCL, board.SDA)
+        self._sensor = BNO055_I2C(self._i2c)
+
+    def start(self):
+        if self._running:
+            return
+
+        self._running = True
+        self._thread = threading.Thread(target=self._update_loop, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._running = False
+        if self._thread:
+            self._thread.join()
+
+    def calibrate(self):
+        if self._latest:
+            self.roll_offset += self._latest.roll
+            self.pitch_offset += self._latest.pitch
+            self.yaw_offset += self._latest.yaw
+
+    def get_latest(self) -> Optional[IMUData]:
+        return self._latest
+
+    def _update_loop(self):
+        dt = 1.0 / self.update_rate
+
+        while self._running:
+            start_time = time.time()
+
+            euler = self._sensor.euler
+            if euler is not None:
+                heading, roll, pitch = euler
+
+                if roll is not None and pitch is not None and heading is not None:
+                    self._latest = IMUData(
+                        roll=roll - self.roll_offset,
+                        pitch=pitch - self.pitch_offset,
+                        yaw=heading - self.yaw_offset,
+                        timestamp=time.time()
+                    )
+
+            elapsed = time.time() - start_time
+            time.sleep(max(0.0, dt - elapsed))
 
 
 @dataclass
@@ -86,11 +156,8 @@ class PlatformLevelingSystem:
             self.imu.start()
         else:
             print("\nUsing BNO055 IMU (production)...")
-            # TODO: Initialize BNO055 via I2C
-            # For now, use iPhone as fallback
-            self.imu = IMUStreamer()
-            self.imu.start()
-        
+            self.imu = self._initialize_bno055()
+
         # 3. ESP32 Controller
         print("\nInitializing ESP32 Controller...")
         self.controller = ESP32Controller(
@@ -285,26 +352,35 @@ class PlatformLevelingSystem:
         
         print("System shutdown complete")
 
+    def _initialize_bno055(self):
+        if _BNO055_AVAILABLE:
+            try:
+                imu = BNO055IMU()
+                imu.start()
+                return imu
+            except Exception as exc:
+                print(f"Unable to initialize BNO055 IMU: {exc}")
+
+        print("Falling back to iPhone IMU streaming...")
+        fallback = IMUStreamer()
+        fallback.start()
+        return fallback
+
 
 # Command-line interface
-def main():
-    import sys
-    
+def run_cli(platform_type: str = 'tripod') -> None:
+    """Launch the interactive leveling system command-line interface."""
+
     print("="*60)
     print("PLATFORM LEVELING SYSTEM")
     print("="*60)
-    
-    # Parse arguments
-    platform_type = 'tripod'
-    if len(sys.argv) > 1:
-        platform_type = sys.argv[1].lower()
-    
+
     # Create system
     system = PlatformLevelingSystem(
         platform_type=platform_type,
         use_iphone_imu=True  # Use iPhone for testing
     )
-    
+
     print("\nCommands:")
     print("  'c' - Calibrate IMU")
     print("  'a' - Calibrate actuators")
@@ -314,60 +390,71 @@ def main():
     print("  's' - Show status")
     print("  'q' - Quit")
     print()
-    
+
     try:
         while True:
             cmd = input("> ").strip().lower()
-            
+
             if cmd == 'c':
                 system.calibrate_imu()
-            
+
             elif cmd == 'a':
                 system.calibrate_actuators()
-            
+
             elif cmd == 'e':
                 system.leveling_enabled = not system.leveling_enabled
                 system.enable_leveling(system.leveling_enabled)
-            
+
             elif cmd == 'l':
                 if not system.leveling_enabled:
                     print("Enable leveling first (press 'e')")
                 else:
                     system.level_once()
-            
+
             elif cmd == 'auto':
                 system.auto_level_enabled = not system.auto_level_enabled
                 system.enable_auto_level(system.auto_level_enabled)
-            
+
             elif cmd == 's':
                 status = system.get_status()
                 print("\nSystem Status:")
                 print(f"  Leveling: {'ENABLED' if status['leveling_enabled'] else 'DISABLED'}")
                 print(f"  Auto-level: {'ENABLED' if status['auto_level_enabled'] else 'DISABLED'}")
-                
+
                 if status['imu']['roll'] is not None:
                     print(f"\n  IMU:")
                     print(f"    Roll:  {status['imu']['roll']:7.2f}°")
                     print(f"    Pitch: {status['imu']['pitch']:7.2f}°")
                     print(f"    Yaw:   {status['imu']['yaw']:7.2f}°")
                     print(f"    Tilt:  {status['imu']['tilt_magnitude']:7.2f}°")
-                
+
                 print(f"\n  Controller:")
                 print(f"    Positions: {[f'{p:.1f}' for p in status['controller']['positions']]} mm")
                 print(f"    Targets:   {[f'{t:.1f}' for t in status['controller']['targets']]} mm")
                 print()
-            
+
             elif cmd == 'q':
                 break
-            
+
             else:
                 print("Unknown command")
-    
+
     except KeyboardInterrupt:
         print()
-    
+
     finally:
         system.shutdown()
+
+
+def main():
+    import sys
+
+    # Parse arguments
+    platform_type = 'tripod'
+    if len(sys.argv) > 1:
+        platform_type = sys.argv[1].lower()
+
+    run_cli(platform_type=platform_type)
 
 
 if __name__ == "__main__":

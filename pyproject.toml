@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-leveling"
+version = "0.1.0"
+description = "Vehicle-mounted platform leveling simulation and tools"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "Platform Leveling Team" }
+]
+keywords = ["simulation", "robotics", "platform", "leveling"]
+dependencies = [
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+    "pyserial>=3.5"
+]
+
+[project.scripts]
+leveling-app = "leveling_app.cli:main"
+
+[tool.setuptools]
+py-modules = [
+    "esp32_controller",
+    "imu_streamer",
+    "imu_streamer_http",
+    "inverse_kinematics",
+    "leveling_system",
+    "platform_comparison",
+    "platform_leveling_gui",
+    "platform_visualizer",
+    "platform_visualizer_http",
+    "sensor_logger_inspector"
+]
+
+[tool.setuptools.packages.find]
+include = ["leveling_app"]

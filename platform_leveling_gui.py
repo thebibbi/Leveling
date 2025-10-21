@@ -20,16 +20,22 @@ from inverse_kinematics import TripodIK, StewartPlatformIK, PlatformConfig
 
 
 class PlatformLevelingGUI:
-    """
-    GUI application for platform leveling visualization
-    """
-    
-    def __init__(self):
+    """GUI application for platform leveling visualization."""
+
+    SUPPORTED_PLATFORMS = {"tripod", "stewart_3dof", "stewart_6dof"}
+
+    def __init__(self, initial_platform: str = "tripod"):
+        if initial_platform not in self.SUPPORTED_PLATFORMS:
+            raise ValueError(
+                f"Unsupported platform '{initial_platform}'. "
+                f"Choose one of: {sorted(self.SUPPORTED_PLATFORMS)}"
+            )
+
         # Create main window
         self.root = tk.Tk()
         self.root.title("Platform Leveling System")
         self.root.geometry("1400x800")
-        
+
         # Platform configuration
         self.config = PlatformConfig(
             length=1.83,
@@ -38,33 +44,37 @@ class PlatformLevelingGUI:
             max_height=0.7,
             actuator_stroke=0.4
         )
-        
+
         # Initialize IK solvers
         self.tripod_solver = TripodIK(self.config)
         self.stewart_3dof_solver = StewartPlatformIK(self.config, dof_mode='3DOF')
         self.stewart_6dof_solver = StewartPlatformIK(self.config, dof_mode='6DOF')
-        
+
         # Current configuration
-        self.platform_type = 'tripod'
-        self.ik_solver = self.tripod_solver
-        
+        self.platform_type = initial_platform
+        self.ik_solver = self.tripod_solver  # will be updated below
+
         # IMU streamer
         self.imu_streamer = IMUHTTPStreamer()
         self.imu_streamer.start()
-        
+
         # State
         self.leveling_enabled = False
         self.running = True
         self.view_elevation = 25
         self.view_azimuth = 45
-        
+
+        # Tk variable to keep radio buttons in sync
+        self.config_var = tk.StringVar(value=self.platform_type)
+
         # Setup UI
         self._setup_ui()
-        
+        self._apply_platform_type(self.platform_type)
+
         # Start update loop
         self.update_thread = threading.Thread(target=self._update_loop, daemon=True)
         self.update_thread.start()
-        
+
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
     
@@ -147,14 +157,12 @@ class PlatformLevelingGUI:
         # Platform Configuration
         config_frame = ttk.LabelFrame(right_frame, text="Platform Configuration", padding="10")
         config_frame.pack(fill=tk.X, pady=5)
-        
-        self.config_var = tk.StringVar(value="tripod")
-        
-        ttk.Radiobutton(config_frame, text="Tripod (3 actuators, no yaw)", 
+
+        ttk.Radiobutton(config_frame, text="Tripod (3 actuators, no yaw)",
                        variable=self.config_var, value="tripod",
                        command=self._change_platform_type).pack(anchor=tk.W)
-        
-        ttk.Radiobutton(config_frame, text="Stewart 3-DOF (6 actuators)", 
+
+        ttk.Radiobutton(config_frame, text="Stewart 3-DOF (6 actuators)",
                        variable=self.config_var, value="stewart_3dof",
                        command=self._change_platform_type).pack(anchor=tk.W)
         
@@ -227,17 +235,23 @@ class PlatformLevelingGUI:
         self.imu_streamer.calibrate()
         messagebox.showinfo("Calibration", "IMU calibrated!\nCurrent position set as zero.")
     
-    def _change_platform_type(self):
-        """Change platform configuration"""
-        new_type = self.config_var.get()
+    def _apply_platform_type(self, new_type: str) -> None:
+        """Update solvers and state for the selected platform type."""
+
         self.platform_type = new_type
-        
+        self.config_var.set(new_type)
+
         if new_type == 'tripod':
             self.ik_solver = self.tripod_solver
         elif new_type == 'stewart_3dof':
             self.ik_solver = self.stewart_3dof_solver
         else:  # stewart_6dof
             self.ik_solver = self.stewart_6dof_solver
+
+    def _change_platform_type(self):
+        """Change platform configuration from the radio buttons."""
+
+        self._apply_platform_type(self.config_var.get())
     
     def _draw_platform(self, roll, pitch, yaw, actuator_lengths):
         """Draw the 3D platform"""
@@ -383,6 +397,12 @@ class PlatformLevelingGUI:
         self.root.mainloop()
 
 
-if __name__ == "__main__":
-    app = PlatformLevelingGUI()
+def run_gui(initial_platform: str = "tripod") -> None:
+    """Launch the Tkinter-based GUI for the leveling system."""
+
+    app = PlatformLevelingGUI(initial_platform=initial_platform)
     app.run()
+
+
+if __name__ == "__main__":
+    run_gui()
