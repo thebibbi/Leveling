@@ -2,11 +2,14 @@
 
 
 a = Analysis(
-    ['platform_leveling_gui.py'],
-    pathex=[],
+    ['leveling_app/cli.py'],
+    pathex=['.'],
     binaries=[],
     datas=[('inverse_kinematics.py', '.'), ('imu_streamer_http.py', '.')],
-    hiddenimports=[],
+    hiddenimports=[
+        'matplotlib.backends.backend_tkagg',
+        'matplotlib.backends.backend_qt5agg',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -29,7 +32,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

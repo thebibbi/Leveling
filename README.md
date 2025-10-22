@@ -172,8 +172,19 @@ platform-leveling/
 ├── esp32_controller.py      # ESP32 controller simulator
 ├── platform_visualizer.py   # 3D visualization
 ├── leveling_system.py       # Integrated system
+├── platform_leveling_gui.py # Tkinter GUI interface
+├── leveling_app/            # CLI launcher package
+│   ├── __init__.py
+│   ├── __main__.py
+│   └── cli.py               # Interactive menu
 ├── requirements.txt         # Python dependencies
+├── PlatformLeveling.spec    # PyInstaller build configuration
 ├── README.md                # This file
+├── QUICK_START.md          # Quick start guide for packaged app
+├── PACKAGING.md            # Detailed packaging documentation
+├── LICENSE                 # MIT license
+├── tests/                  # Unit tests
+│   └── test_inverse_kinematics.py
 └── docs/
     ├── ESP32_FIRMWARE.md    # ESP32 firmware guide
     ├── HARDWARE_SPEC.md     # Hardware specifications
@@ -308,6 +319,58 @@ For issues or questions:
 2. Review hardware specifications
 3. Test individual components
 4. Consult the calibration guide in `docs/CALIBRATION.md`
+
+## 🗂️ Packaging into a One-Click Application
+
+Create a standalone macOS app launcher that bundles all simulation tools into a single application.
+
+> **✅ Threading Issue Fixed:** The GUI now uses Tkinter's `after()` method for thread-safe updates, preventing GIL-related crashes when closing windows.
+
+### Building the Application
+
+```bash
+# Install PyInstaller if not already installed
+pip install pyinstaller
+
+# Clean previous builds (optional)
+rm -rf build dist
+
+# Build the application
+pyinstaller PlatformLeveling.spec
+```
+
+### Using the Packaged Application
+
+After the build completes, you can launch the application in two ways:
+
+**Option 1: Double-click in Finder**
+- Navigate to `dist/PlatformLeveling.app` in Finder
+- Double-click to launch the application
+- A terminal window will open with an interactive menu
+
+**Option 2: Command Line**
+```bash
+open dist/PlatformLeveling.app
+```
+
+### Interactive Menu Options
+
+The packaged app provides a guided menu interface with the following options:
+
+1. **Launch graphical interface (GUI)** - Opens the Tkinter-based GUI with real-time 3D visualization
+2. **Launch 3D visualizer** - Opens the matplotlib-based 3D platform visualizer
+3. **Launch leveling system CLI** - Opens the interactive leveling system command-line interface
+4. **Change platform type** - Switch between tripod, stewart_3dof, and stewart_6dof configurations
+5. **Quit** - Exit the application
+
+### Distribution
+
+The `dist/PlatformLeveling.app` bundle is self-contained and can be:
+- Copied to other macOS machines (same architecture)
+- Distributed to users without Python installed
+- Placed in the Applications folder
+
+**Note:** The build warnings about missing Windows modules (e.g., `winreg`, `nt`) are expected and can be ignored on macOS. Optional BNO055 IMU libraries are also listed as warnings but don't prevent the app from functioning with the iPhone IMU fallback.
 
 ## 📄 License
 

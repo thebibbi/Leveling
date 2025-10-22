@@ -71,9 +71,8 @@ class PlatformLevelingGUI:
         self._setup_ui()
         self._apply_platform_type(self.platform_type)
 
-        # Start update loop
-        self.update_thread = threading.Thread(target=self._update_loop, daemon=True)
-        self.update_thread.start()
+        # Start update loop using Tkinter's after() method (thread-safe)
+        self._schedule_update()
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -325,66 +324,73 @@ class PlatformLevelingGUI:
         self.canvas.draw()
     
     def _update_loop(self):
-        """Main update loop"""
-        while self.running:
-            imu_data = self.imu_streamer.get_latest()
+        """Main update loop - called via Tkinter's after() method for thread safety"""
+        if not self.running:
+            return
             
-            if imu_data:
-                # Update status
-                self.status_label.config(text="🟢 Connected to iPhone")
-                
-                # Update IMU display
-                self.roll_label.config(text=f"Roll:  {imu_data.roll:6.2f}°")
-                self.pitch_label.config(text=f"Pitch: {imu_data.pitch:6.2f}°")
-                
-                if self.platform_type == 'stewart_6dof':
-                    self.yaw_label.config(text=f"Yaw:   {imu_data.yaw:6.2f}°")
-                else:
-                    self.yaw_label.config(text=f"Yaw:   {imu_data.yaw:6.2f}° (ignored)")
-                
-                tilt_mag = np.sqrt(imu_data.roll**2 + imu_data.pitch**2)
-                self.tilt_label.config(text=f"Tilt:  {tilt_mag:6.2f}°")
-                
-                # Calculate actuator positions
-                roll_rad = np.deg2rad(imu_data.roll)
-                pitch_rad = np.deg2rad(imu_data.pitch)
-                yaw_rad = np.deg2rad(imu_data.yaw)
-                
-                if self.leveling_enabled:
-                    if self.platform_type == 'tripod':
-                        lengths, valid = self.ik_solver.level_platform(roll_rad, pitch_rad)
-                    elif self.platform_type == 'stewart_3dof':
-                        lengths, valid = self.ik_solver.level_platform(roll_rad, pitch_rad, 0)
-                    else:
-                        lengths, valid = self.ik_solver.level_platform(roll_rad, pitch_rad, yaw_rad)
-                    
-                    display_roll = 0
-                    display_pitch = 0
-                    display_yaw = 0
-                else:
-                    if self.platform_type == 'tripod':
-                        lengths, valid = self.ik_solver.solve(roll_rad, pitch_rad, 0)
-                        display_roll, display_pitch, display_yaw = roll_rad, pitch_rad, 0
-                    elif self.platform_type == 'stewart_3dof':
-                        lengths, valid = self.ik_solver.solve(roll_rad, pitch_rad, 0)
-                        display_roll, display_pitch, display_yaw = roll_rad, pitch_rad, 0
-                    else:
-                        lengths, valid = self.ik_solver.solve(roll_rad, pitch_rad, yaw_rad)
-                        display_roll, display_pitch, display_yaw = roll_rad, pitch_rad, yaw_rad
-                
-                # Update actuator display
-                num_actuators = len(lengths)
-                for i in range(6):
-                    if i < num_actuators:
-                        length_mm = lengths[i] * 1000
-                        self.actuator_labels[i].config(text=f"[{i+1}] {length_mm:6.1f} mm ✓")
-                    else:
-                        self.actuator_labels[i].config(text=f"[{i+1}] ---.- mm")
-                
-                # Draw platform
-                self._draw_platform(display_roll, display_pitch, display_yaw, lengths)
+        imu_data = self.imu_streamer.get_latest()
+        
+        if imu_data:
+            # Update status
+            self.status_label.config(text="🟢 Connected to iPhone")
             
-            time.sleep(0.05)  # 20 FPS
+            # Update IMU display
+            self.roll_label.config(text=f"Roll:  {imu_data.roll:6.2f}°")
+            self.pitch_label.config(text=f"Pitch: {imu_data.pitch:6.2f}°")
+            
+            if self.platform_type == 'stewart_6dof':
+                self.yaw_label.config(text=f"Yaw:   {imu_data.yaw:6.2f}°")
+            else:
+                self.yaw_label.config(text=f"Yaw:   {imu_data.yaw:6.2f}° (ignored)")
+            
+            tilt_mag = np.sqrt(imu_data.roll**2 + imu_data.pitch**2)
+            self.tilt_label.config(text=f"Tilt:  {tilt_mag:6.2f}°")
+            
+            # Calculate actuator positions
+            roll_rad = np.deg2rad(imu_data.roll)
+            pitch_rad = np.deg2rad(imu_data.pitch)
+            yaw_rad = np.deg2rad(imu_data.yaw)
+            
+            if self.leveling_enabled:
+                if self.platform_type == 'tripod':
+                    lengths, valid = self.ik_solver.level_platform(roll_rad, pitch_rad)
+                elif self.platform_type == 'stewart_3dof':
+                    lengths, valid = self.ik_solver.level_platform(roll_rad, pitch_rad, 0)
+                else:
+                    lengths, valid = self.ik_solver.level_platform(roll_rad, pitch_rad, yaw_rad)
+                
+                display_roll = 0
+                display_pitch = 0
+                display_yaw = 0
+            else:
+                if self.platform_type == 'tripod':
+                    lengths, valid = self.ik_solver.solve(roll_rad, pitch_rad, 0)
+                    display_roll, display_pitch, display_yaw = roll_rad, pitch_rad, 0
+                elif self.platform_type == 'stewart_3dof':
+                    lengths, valid = self.ik_solver.solve(roll_rad, pitch_rad, 0)
+                    display_roll, display_pitch, display_yaw = roll_rad, pitch_rad, 0
+                else:
+                    lengths, valid = self.ik_solver.solve(roll_rad, pitch_rad, yaw_rad)
+                    display_roll, display_pitch, display_yaw = roll_rad, pitch_rad, yaw_rad
+            
+            # Update actuator display
+            num_actuators = len(lengths)
+            for i in range(6):
+                if i < num_actuators:
+                    length_mm = lengths[i] * 1000
+                    self.actuator_labels[i].config(text=f"[{i+1}] {length_mm:6.1f} mm ✓")
+                else:
+                    self.actuator_labels[i].config(text=f"[{i+1}] ---.- mm")
+            
+            # Draw platform
+            self._draw_platform(display_roll, display_pitch, display_yaw, lengths)
+        
+        # Schedule next update (20 FPS = 50ms)
+        self._schedule_update()
+    
+    def _schedule_update(self):
+        """Schedule the next GUI update on the main thread"""
+        self.root.after(50, self._update_loop)
     
     def _on_closing(self):
         """Handle window close"""

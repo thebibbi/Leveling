@@ -154,3 +154,7 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         args.func(args)
     else:
         _interactive_menu()
+
+
+if __name__ == "__main__":
+    main()
